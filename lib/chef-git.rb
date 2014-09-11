@@ -36,13 +36,6 @@ class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
       Librarian::Chef::Cli.with_environment { Librarian::Chef::Cli.start(['install']) }
     end
 
-    cookbooks = GIT_REPO + 'cookbooks'
-    librarian = GIT_REPO + 'tmp/librarian/cookbooks'
-    librarian.each_child do |child|
-      target = cookbooks + child.basename
-      File.symlink(child.relative_path_from(cookbooks), target) unless target.exist?
-    end
-
     # -- Copypasta from real chef: --
     begin
       events.cookbook_resolution_start(@expanded_run_list_with_versions)
@@ -57,8 +50,11 @@ class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
     end
     # -- end copypasta --
 
+    cookbooks = GIT_REPO + 'cookbooks'
+    librarian_cookbooks = GIT_REPO + 'tmp/librarian/cookbooks'
+
     cookbook_hash.each do |name, book|
-      resolve_file_paths(book, [cookbooks + name, librarian + name].first(&:exist?))
+      resolve_file_paths(book, [cookbooks + name, librarian_cookbooks + name].detect(&:exist?))
     end
 
     Chef::Config[:cookbook_path] = cookbooks.to_s
