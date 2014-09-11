@@ -37,7 +37,8 @@ class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
     end
 
     cookbooks = GIT_REPO + 'cookbooks'
-    (GIT_REPO + 'tmp/librarian/cookbooks').each_child do |child|
+    librarian = GIT_REPO + 'tmp/librarian/cookbooks'
+    librarian.each_child do |child|
       target = cookbooks + child.basename
       File.symlink(child.relative_path_from(cookbooks), target) unless target.exist?
     end
@@ -56,8 +57,8 @@ class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
     end
     # -- end copypasta --
 
-    cookbook_hash.values.each do |book|
-      resolve_file_paths(book, cookbooks)
+    cookbook_hash.each do |name, book|
+      resolve_file_paths(book, [cookbooks + name, librarian + name].first(&:exist?))
     end
 
     Chef::Config[:cookbook_path] = cookbooks.to_s
@@ -76,11 +77,9 @@ class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
     raise CommandFailed.new(command, $?) unless $?.success?
   end
 
-  def resolve_file_paths(cookbook, base_path)
-    base_path += cookbook.name
-
+  def resolve_file_paths(cookbook, cookbook_path)
     Chef::CookbookVersion::COOKBOOK_SEGMENTS.each do |segment|
-      paths = cookbook.manifest[segment].map { |mani| (base_path + mani['path']).to_s }
+      paths = cookbook.manifest[segment].map { |mani| (cookbook_path + mani['path']).to_s }
 
       if segment.to_sym == :recipes
         cookbook.recipe_filenames = paths
