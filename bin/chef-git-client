@@ -3,6 +3,6 @@
 $LOAD_PATH << File.dirname(File.realpath($0)) + '/../lib'
 
 require 'rubygems'
-require 'chef-git'
+require 'chef_git'
 
 load Gem.bin_path('chef', 'chef-client')

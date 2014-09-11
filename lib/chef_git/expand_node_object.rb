@@ -2,11 +2,6 @@ require 'chef/policy_builder/expand_node_object'
 require 'librarian/chef/cli'
 require 'pathname'
 
-require 'pry' # debug
-
-module ChefGit
-end
-
 class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
   class CommandFailed < StandardError
     attr_reader :command, :status
@@ -87,5 +82,3 @@ class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
     end
   end
 end
-
-Chef::PolicyBuilder::ExpandNodeObject = ChefGit::ExpandNodeObject
