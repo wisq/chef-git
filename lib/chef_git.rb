@@ -6,5 +6,11 @@ end
 require 'chef_git/expand_node_object'
 require 'chef_git/role'
 
-Chef::PolicyBuilder::ExpandNodeObject = ChefGit::ExpandNodeObject
-Chef::Role = ChefGit::Role
+original_verbosity = $VERBOSE
+begin
+  $VERBOSE = nil # suppress warnings
+  Chef::PolicyBuilder::ExpandNodeObject = ChefGit::ExpandNodeObject
+  Chef::Role = ChefGit::Role
+ensure
+  $VERBOSE = original_verbosity
+end
