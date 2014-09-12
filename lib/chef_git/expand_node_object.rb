@@ -19,10 +19,11 @@ class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
     end
   end
 
-  GIT_REPO = Pathname.new('/var/chef/git')
 
-  def sync_cookbooks
-    Dir.chdir(GIT_REPO) do
+  def check_out_git
+    return if @git_repo
+    repo = Pathname.new('/var/chef/git')
+    Dir.chdir(repo) do
       git('fetch', 'origin')
       git('reset', '--hard')
       git('clean', '-fd')
@@ -30,6 +31,21 @@ class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
 
       Librarian::Chef::Cli.with_environment { Librarian::Chef::Cli.start(['install']) }
     end
+    @git_repo = repo
+  end
+
+  def expand_run_list
+    check_out_git
+    Chef::Config[:role_path] = (@git_repo + 'roles').to_s
+
+    @run_list_expansion = node.expand!('disk')
+
+    @expanded_run_list_with_versions = @run_list_expansion.recipes.with_version_constraints_strings
+    @run_list_expansion
+  end
+
+  def sync_cookbooks
+    check_out_git
 
     # -- Copypasta from real chef: --
     begin
@@ -45,8 +61,8 @@ class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
     end
     # -- end copypasta --
 
-    cookbooks = GIT_REPO + 'cookbooks'
-    librarian_cookbooks = GIT_REPO + 'tmp/librarian/cookbooks'
+    cookbooks = @git_repo + 'cookbooks'
+    librarian_cookbooks = @git_repo + 'tmp/librarian/cookbooks'
 
     cookbook_hash.each do |name, book|
       resolve_file_paths(book, [cookbooks + name, librarian_cookbooks + name].detect(&:exist?))
