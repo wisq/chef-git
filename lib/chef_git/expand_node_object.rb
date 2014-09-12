@@ -32,45 +32,40 @@ class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
       Librarian::Chef::Cli.with_environment { Librarian::Chef::Cli.start(['install']) }
     end
     @git_repo = repo
+
+    Chef::Config[:cookbook_path] = [
+      @git_repo + 'cookbooks',
+      @git_repo + 'tmp/librarian/cookbooks'
+    ].map(&:to_s)
+    Chef::Config[:role_path] = (@git_repo + 'roles').to_s
+  end
+
+  def setup_run_context(specific_recipes=nil)
+    check_out_git
+
+    # Copied from chef, because we need to act like :solo = true but not actually set it.
+    Chef::Cookbook::FileVendor.on_create { |manifest| Chef::Cookbook::FileSystemFileVendor.new(manifest, Chef::Config[:cookbook_path]) }
+    cl = Chef::CookbookLoader.new(Chef::Config[:cookbook_path])
+    cl.load_cookbooks
+    cookbook_collection = Chef::CookbookCollection.new(cl)
+    run_context = Chef::RunContext.new(node, cookbook_collection, @events)
+
+    run_context.load(@run_list_expansion)
+    if specific_recipes
+      specific_recipes.each do |recipe_file|
+        run_context.load_recipe_file(recipe_file)
+      end
+    end
+    run_context
   end
 
   def expand_run_list
     check_out_git
-    Chef::Config[:role_path] = (@git_repo + 'roles').to_s
 
     @run_list_expansion = node.expand!('disk')
 
     @expanded_run_list_with_versions = @run_list_expansion.recipes.with_version_constraints_strings
     @run_list_expansion
-  end
-
-  def sync_cookbooks
-    check_out_git
-
-    # -- Copypasta from real chef: --
-    begin
-      events.cookbook_resolution_start(@expanded_run_list_with_versions)
-      cookbook_hash = api_service.post("environments/#{node.chef_environment}/cookbook_versions",
-                                      {:run_list => @expanded_run_list_with_versions})
-    rescue Exception => e
-      # TODO: wrap/munge exception to provide helpful error output
-      events.cookbook_resolution_failed(@expanded_run_list_with_versions, e)
-      raise
-    else
-      events.cookbook_resolution_complete(cookbook_hash)
-    end
-    # -- end copypasta --
-
-    cookbooks = @git_repo + 'cookbooks'
-    librarian_cookbooks = @git_repo + 'tmp/librarian/cookbooks'
-
-    cookbook_hash.each do |name, book|
-      resolve_file_paths(book, [cookbooks + name, librarian_cookbooks + name].detect(&:exist?))
-    end
-
-    Chef::Config[:cookbook_path] = cookbooks.to_s
-
-    cookbook_hash
   end
 
   private
