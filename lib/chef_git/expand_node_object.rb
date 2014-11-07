@@ -43,8 +43,14 @@ class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
   def setup_run_context(specific_recipes=nil)
     check_out_git
 
-    # Copied from chef, because we need to act like :solo = true but not actually set it.
-    Chef::Cookbook::FileVendor.on_create { |manifest| Chef::Cookbook::FileSystemFileVendor.new(manifest, Chef::Config[:cookbook_path]) }
+    # We need to act like :solo = true but not actually set it.
+    begin
+      # 11.16.2 and before.
+      Chef::Cookbook::FileVendor.on_create { |manifest| Chef::Cookbook::FileSystemFileVendor.new(manifest, Chef::Config[:cookbook_path]) }
+    rescue
+      # 11.16.4 and later
+      Chef::Cookbook::FileVendor.fetch_from_disk(Chef::Config[:cookbook_path])
+    end
     cl = Chef::CookbookLoader.new(Chef::Config[:cookbook_path])
     cl.load_cookbooks
     cookbook_collection = Chef::CookbookCollection.new(cl)
