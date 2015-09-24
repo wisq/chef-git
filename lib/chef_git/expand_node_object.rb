@@ -3,6 +3,9 @@ require 'librarian/chef/cli'
 require 'pathname'
 
 class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
+
+  REPO_PATH = '/var/chef/git'
+
   class CommandFailed < StandardError
     attr_reader :command, :status
 
@@ -19,10 +22,16 @@ class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
     end
   end
 
+  def cleanup_git
+    Dir.chdir(REPO_PATH) do
+      git('remote', 'prune', 'origin')
+      git('gc', '--auto', '--aggressive')
+    end
+  end
 
   def check_out_git
     return if @git_repo
-    repo = Pathname.new('/var/chef/git')
+    repo = Pathname.new(REPO_PATH)
     Dir.chdir(repo) do
       git('fetch', 'origin')
       git('reset', '--hard')
@@ -41,6 +50,7 @@ class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
   end
 
   def setup_run_context(specific_recipes=nil)
+    cleanup_git if Time.now.hour == 3
     check_out_git
 
     # We need to act like :solo = true but not actually set it.
