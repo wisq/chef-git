@@ -48,8 +48,8 @@ class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
   end
 
   def setup_run_context(specific_recipes=nil)
-    check_out_git
     cleanup_git if Time.now.hour == 3
+    check_out_git
 
     # We need to act like :solo = true but not actually set it.
     begin
