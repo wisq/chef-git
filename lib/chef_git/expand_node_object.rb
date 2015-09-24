@@ -3,6 +3,9 @@ require 'librarian/chef/cli'
 require 'pathname'
 
 class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
+
+  REPO_PATH = '/var/chef/git'
+
   class CommandFailed < StandardError
     attr_reader :command, :status
 
@@ -20,8 +23,7 @@ class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
   end
 
   def cleanup_git
-    repo = Pathname.new('/var/chef/git')
-    Dir.chdir(repo) do
+    Dir.chdir(REPO_PATH) do
       git('remote', 'prune', 'origin')
       git('gc', '--auto', '--aggressive')
     end
@@ -29,7 +31,7 @@ class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
 
   def check_out_git
     return if @git_repo
-    repo = Pathname.new('/var/chef/git')
+    repo = Pathname.new(REPO_PATH)
     Dir.chdir(repo) do
       git('fetch', 'origin')
       git('reset', '--hard')
