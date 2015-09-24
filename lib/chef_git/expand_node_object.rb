@@ -19,6 +19,13 @@ class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
     end
   end
 
+  def cleanup_git
+    repo = Pathname.new('/var/chef/git')
+    Dir.chdir(repo) do
+      git('remote', 'prune', 'origin')
+      git('gc', '--auto', '--aggressive')
+    end
+  end
 
   def check_out_git
     return if @git_repo
@@ -42,6 +49,7 @@ class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
 
   def setup_run_context(specific_recipes=nil)
     check_out_git
+    cleanup_git if Time.now.hour == 3
 
     # We need to act like :solo = true but not actually set it.
     begin
