@@ -1,5 +1,4 @@
 require 'chef/policy_builder/expand_node_object'
-require 'librarian/chef/cli'
 require 'pathname'
 
 class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
@@ -38,14 +37,20 @@ class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
       git('clean', '-fd')
       git('checkout', "origin/#{@node.chef_environment}")
 
-      Librarian::Chef::Cli.with_environment { Librarian::Chef::Cli.start(['install']) }
+      unless Dir.exist?('cookbooks-upstream')
+        require 'librarian/chef/cli'
+        Librarian::Chef::Cli.with_environment { Librarian::Chef::Cli.start(['install']) }
+      end
     end
     @git_repo = repo
 
-    Chef::Config[:cookbook_path] = [
-      @git_repo + 'cookbooks',
-      @git_repo + 'tmp/librarian/cookbooks'
-    ].map(&:to_s)
+    Chef::Config[:cookbook_path] = [(@git_repo + 'cookbooks').to_s]
+    upstream_cookbook_path = (@git_repo + 'cookbooks-upstream').to_s
+    if Dir.exist?(upstream_cookbook_path)
+      Chef::Config[:cookbook_path] << upstream_cookbook_path
+    else
+      Chef::Config[:cookbook_path] << (@git_repo + 'tmp/librarian/cookbooks').to_s
+    end
     Chef::Config[:role_path] = (@git_repo + 'roles').to_s
   end
 
