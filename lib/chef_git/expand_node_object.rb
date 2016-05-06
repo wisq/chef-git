@@ -54,18 +54,19 @@ class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
     check_out_git
 
     # We need to act like :solo = true but not actually set it.
-    begin
-      # 11.16.2 and before.
-      Chef::Cookbook::FileVendor.on_create { |manifest| Chef::Cookbook::FileSystemFileVendor.new(manifest, Chef::Config[:cookbook_path]) }
-    rescue
-      # 11.16.4 and later
-      Chef::Cookbook::FileVendor.fetch_from_disk(Chef::Config[:cookbook_path])
-    end
+    Chef::Cookbook::FileVendor.fetch_from_disk(Chef::Config[:cookbook_path])
     cl = Chef::CookbookLoader.new(Chef::Config[:cookbook_path])
     cl.load_cookbooks
     cookbook_collection = Chef::CookbookCollection.new(cl)
+    cookbook_collection.validate!
     run_context = Chef::RunContext.new(node, cookbook_collection, @events)
 
+    # TODO: this is really obviously not the place for this
+    # FIXME: need same edits
+    setup_chef_class(run_context)
+
+    # TODO: this is not the place for this. It should be in Runner or
+    # CookbookCompiler or something.
     run_context.load(@run_list_expansion)
     if specific_recipes
       specific_recipes.each do |recipe_file|
@@ -80,8 +81,20 @@ class ChefGit::ExpandNodeObject < Chef::PolicyBuilder::ExpandNodeObject
 
     @run_list_expansion = node.expand!('disk')
 
+    # @run_list_expansion is a RunListExpansion.
+    #
+    # Convert @expanded_run_list, which is an
+    # Array of Hashes of the form
+    #   {:name => NAME, :version_constraint => Chef::VersionConstraint },
+    # into @expanded_run_list_with_versions, an
+    # Array of Strings of the form
+    #   "#{NAME}@#{VERSION}"
     @expanded_run_list_with_versions = @run_list_expansion.recipes.with_version_constraints_strings
     @run_list_expansion
+  rescue Exception => e
+    # TODO: wrap/munge exception with useful error output.
+    events.run_list_expand_failed(node, e)
+    raise
   end
 
   private
