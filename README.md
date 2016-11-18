@@ -1,3 +1,5 @@
+![https://travis-ci.org/Shopify/chef-git](https://travis-ci.org/Shopify/chef-git.svg)
+
 # chef-git-client
 
 `chef-git-client` is an augmented `chef-client`. It will pull down a git repo
